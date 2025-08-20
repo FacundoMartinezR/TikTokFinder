@@ -11,7 +11,7 @@ const App = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("https://tiktokfinder.onrender.com/auth/me", { credentials: "include" })
+    fetch("https://tiktokfinder.onrender.com/auth/me", {method: "GET", credentials: "include" })
       .then((res) => res.json())
       .then((data) => {
         setUser(data.user || null);
