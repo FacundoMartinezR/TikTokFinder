@@ -21,7 +21,7 @@ const PaypalSuccess: React.FC = () => {
       setLoading(true);
       try {
         // Obtener info de usuario (si tu endpoint auth/me está protegido por cookie)
-        const meRes = await fetch("http://localhost:4000/auth/me", { credentials: "include" });
+        const meRes = await fetch("https://tiktokfinder.onrender.com/auth/me", { credentials: "include" });
         const meJson = await meRes.json();
         if (!meJson.ok || !meJson.user?.id) {
           setMsg("No se pudo obtener la sesión del usuario. Inicia sesión de nuevo.");
@@ -31,7 +31,7 @@ const PaypalSuccess: React.FC = () => {
         const userId = meJson.user.id;
 
         // Llamar a /paypal/check-subscription pasando subscriptionId y userId
-        const res = await fetch("http://localhost:4000/paypal/check-subscription", {
+        const res = await fetch("https://tiktokfinder.onrender.com/paypal/check-subscription", {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/json" },

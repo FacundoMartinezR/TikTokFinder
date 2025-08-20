@@ -40,7 +40,7 @@ const Landing = () => {
                 <Button
                   size="lg"
                   className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-2 text-lg font-semibold rounded-xl shadow-xl hover:shadow-2xl transition-all duration-300 animate-pulse-glow group"
-                  onClick={() => (window.location.href = "http://localhost:4000/auth/google")}
+                  onClick={() => (window.location.href = "https://tiktokfinder.onrender.com/auth/google")}
                 >
                   Get Early Access for $19
                   <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
@@ -49,7 +49,7 @@ const Landing = () => {
                   variant="outline"
                   size="lg"
                   className="px-8 py-4 text-lg font-medium rounded-xl border-2 hover:bg-black/40 shadow-xl hover:text-white transition-all duration-300 bg-transparent"
-                  onClick={() => (window.location.href = "http://localhost:4000/auth/google")}
+                  onClick={() => (window.location.href = "https://tiktokfinder.onrender.com/auth/google")}
                 >
                   Free Trial
                 </Button>

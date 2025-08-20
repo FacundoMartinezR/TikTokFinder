@@ -20,7 +20,7 @@ const Dashboard = () => {
     const fetchUser = async () => {
       setLoading(true);
       try {
-        const res = await fetch("http://localhost:4000/auth/me", {
+        const res = await fetch("https://tiktokfinder.onrender.com/auth/me", {
           credentials: "include",
         });
         const data = await res.json();
@@ -53,7 +53,7 @@ const Dashboard = () => {
     console.log("Iniciando create-subscription para userId:", user.id);
 
     try {
-      const res = await fetch("http://localhost:4000/paypal/create-subscription", {
+      const res = await fetch("https://tiktokfinder.onrender.com/paypal/create-subscription", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -97,7 +97,7 @@ const Dashboard = () => {
       console.log("Chequeando suscripción PayPal:", subscriptionId, "para user:", user.id);
 
       try {
-        const res = await fetch("http://localhost:4000/paypal/check-subscription", {
+        const res = await fetch("https://tiktokfinder.onrender.com/paypal/check-subscription", {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
