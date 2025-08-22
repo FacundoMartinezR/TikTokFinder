@@ -16,7 +16,7 @@ const Dashboard = () => {
   const [checkingSubscription, setCheckingSubscription] = useState(false);
   const [canceling, setCanceling] = useState(false);
 
-  // 1) Traer usuario al cargar
+  // Traer usuario al cargar
   const fetchUser = async () => {
     setLoading(true);
     try {
@@ -38,7 +38,7 @@ const Dashboard = () => {
     fetchUser();
   }, []);
 
-  // 2) Crear suscripción
+  // Crear suscripción
   const handleBuyEarlyAccess = async () => {
     if (!user?.id) return alert("No estás autenticado correctamente.");
 
@@ -62,7 +62,7 @@ const Dashboard = () => {
     }
   };
 
-  // 3) Chequear suscripción después del retorno de PayPal
+  // Chequear suscripción después del retorno de PayPal
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const subscriptionId = params.get("subscription_id") || params.get("subscriptionId");
@@ -93,13 +93,19 @@ const Dashboard = () => {
     doCheck();
   }, [user, checkingSubscription]);
 
-  // 4) Cancelar suscripción
+  // Cancelar suscripción
   const handleCancelSubscription = async () => {
     if (!user?.paypalSubscriptionId) return;
-    const confirmed = window.confirm("¿Seguro deseas cancelar tu suscripción? Esto te devolverá al plan FREE.");
+    const confirmed = window.confirm(
+      "¿Seguro deseas cancelar tu suscripción? Esto te devolverá al plan FREE."
+    );
     if (!confirmed) return;
 
     setCanceling(true);
+
+    // Actualizamos rol localmente a FREE inmediatamente
+    setUser(prev => prev ? { ...prev, role: "FREE" } : prev);
+
     try {
       const res = await fetch("https://tiktokfinder.onrender.com/paypal/cancel-subscription", {
         method: "POST",
@@ -107,19 +113,19 @@ const Dashboard = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ subscriptionId: user.paypalSubscriptionId, userId: user.id }),
       });
-      const data = await res.json();
 
+      const data = await res.json();
       if (res.ok && data.ok) {
-        alert("Solicitud de cancelación enviada. Tu rol será actualizado automáticamente vía webhook.");
-        // Refrescar usuario para actualizar rol
-        await fetchUser();
+        alert("Solicitud de cancelación enviada. Tu rol fue actualizado a FREE inmediatamente.");
       } else {
         console.error("Cancel subscription error:", data);
         alert("No se pudo cancelar la suscripción. Revisa la consola.");
+        await fetchUser(); // refrescar rol real
       }
     } catch (err) {
       console.error("Error canceling subscription:", err);
       alert("Error cancelando suscripción. Revisa la consola.");
+      await fetchUser(); // refrescar rol real
     } finally {
       setCanceling(false);
     }
@@ -142,7 +148,10 @@ const Dashboard = () => {
           {working ? "Processing..." : "Buy Early Access"}
         </button>
         <div className="mt-6 text-sm text-muted-foreground">
-          <p>Si ya pagaste y te redirigieron de vuelta, espera unos segundos mientras verificamos tu suscripción.</p>
+          <p>
+            Si ya pagaste y te redirigieron de vuelta, espera unos segundos mientras verificamos tu
+            suscripción.
+          </p>
         </div>
       </div>
     );
