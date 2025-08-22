@@ -27,7 +27,6 @@ const Dashboard = () => {
   const [checkingSubscription, setCheckingSubscription] = useState(false);
   const [canceling, setCanceling] = useState(false);
 
-  // Explorador de tiktokers
   const [tiktokers, setTiktokers] = useState<Tiktoker[]>([]);
   const [filters, setFilters] = useState({
     country: "",
@@ -37,6 +36,7 @@ const Dashboard = () => {
     sortBy: "followers",
   });
   const [loadingTiktokers, setLoadingTiktokers] = useState(false);
+  const [errorTiktokers, setErrorTiktokers] = useState<string>("");
 
   // ============================
   // USER MANAGEMENT
@@ -126,7 +126,6 @@ const Dashboard = () => {
     if (!confirmed) return;
 
     setCanceling(true);
-
     setUser((prev) => (prev ? { ...prev, role: "FREE" } : prev));
 
     try {
@@ -157,15 +156,19 @@ const Dashboard = () => {
   // ============================
   const fetchTiktokers = async () => {
     setLoadingTiktokers(true);
+    setErrorTiktokers("");
     try {
       const params = new URLSearchParams(filters as any).toString();
-      const res = await fetch(`https://tiktokfinder.onrender.com/tiktokers?${params}`, {
+      const res = await fetch(`https://tiktokfinder.onrender.com/api/tiktokers?${params}`, {
         credentials: "include",
       });
+
       const data = await res.json();
       if (data.ok) setTiktokers(data.results);
+      else setErrorTiktokers(data.error || "Error desconocido al cargar tiktokers");
     } catch (err) {
       console.error("Error fetching tiktokers:", err);
+      setErrorTiktokers("Error al cargar tiktokers, revisa la consola del navegador");
     } finally {
       setLoadingTiktokers(false);
     }
@@ -253,6 +256,8 @@ const Dashboard = () => {
       {/* Resultados */}
       {loadingTiktokers ? (
         <p>Cargando tiktokers...</p>
+      ) : errorTiktokers ? (
+        <p className="text-red-600">{errorTiktokers}</p>
       ) : (
         <div className="overflow-x-auto">
           {/* Desktop table */}
