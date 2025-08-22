@@ -14,6 +14,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false); // boton deshabilitado mientras crea subscripción/checkea
   const [checkingSubscription, setCheckingSubscription] = useState(false);
+  const [canceling, setCanceling] = useState(false);
 
   // 1) Traer usuario al cargar
   useEffect(() => {
@@ -44,14 +45,11 @@ const Dashboard = () => {
   // 2) Crear suscripción y redirigir a PayPal
   const handleBuyEarlyAccess = async () => {
     if (!user?.id) {
-      console.error("No hay user.id disponible para crear la suscripción");
       alert("No estás autenticado correctamente. Vuelve a iniciar sesión.");
       return;
     }
 
     setWorking(true);
-    console.log("Iniciando create-subscription para userId:", user.id);
-
     try {
       const res = await fetch("https://tiktokfinder.onrender.com/paypal/create-subscription", {
         method: "POST",
@@ -64,38 +62,26 @@ const Dashboard = () => {
       console.log("create-subscription response:", data);
 
       if (res.ok && data.approveLink) {
-        // Redirijo a PayPal
         window.location.href = data.approveLink;
       } else {
-        // Mostrar error claro al usuario y en consola
-        console.error("No se obtuvo link de aprobación de PayPal", data);
         alert("Error iniciando pago. Revisa la consola del servidor para más detalles.");
       }
     } catch (err) {
       console.error("Error al crear suscripción:", err);
-      alert("Error al crear suscripción. Ver consola.");
+      alert("Error al crear suscripción. Revisa la consola del servidor.");
     } finally {
       setWorking(false);
     }
   };
 
-  // 3) Al volver desde PayPal: leer subscription_id y chequear estado
+  // 3) Chequear suscripción después del retorno de PayPal
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const subscriptionId = params.get("subscription_id") || params.get("subscriptionId"); // variantes
-    if (!subscriptionId) return;
-    if (!user?.id) {
-      // Si aún no cargó el user, esperar a que se cargue (useEffect con dependencia [user] se reejecutará)
-      return;
-    }
-
-    // evitar doble check
-    if (checkingSubscription) return;
+    const subscriptionId = params.get("subscription_id") || params.get("subscriptionId");
+    if (!subscriptionId || !user?.id || checkingSubscription) return;
 
     const doCheck = async () => {
       setCheckingSubscription(true);
-      console.log("Chequeando suscripción PayPal:", subscriptionId, "para user:", user.id);
-
       try {
         const res = await fetch("https://tiktokfinder.onrender.com/paypal/check-subscription", {
           method: "POST",
@@ -103,32 +89,56 @@ const Dashboard = () => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ userId: user.id, subscriptionId }),
         });
-
         const data = await res.json();
         console.log("check-subscription response:", data);
 
         if (res.ok && data.success) {
-          // Actualizamos rol localmente para UX inmediata
-          setUser((prev) => (prev ? { ...prev, role: "PAID" } : prev));
+          // solo UX: mostrar mensaje
           alert("¡Suscripción activada! Ahora tienes acceso completo.");
-          // limpiar params de URL
           window.history.replaceState({}, "", "/dashboard");
+          // no actualizamos role localmente, el webhook será la fuente de verdad
         } else {
-          const status = data.status ?? data.error ?? "unknown";
-          console.warn("Suscripción no activa:", status);
           alert("Tu suscripción aún está pendiente o falló. Revisa tu cuenta de PayPal.");
         }
       } catch (err) {
         console.error("Error checando suscripción:", err);
-        alert("Error verificando suscripción. Ver consola del servidor.");
+        alert("Error verificando suscripción. Revisa la consola del servidor.");
       } finally {
         setCheckingSubscription(false);
       }
     };
 
     doCheck();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]); // se ejecuta cuando user cambia (asegura que user.id exista)
+  }, [user, checkingSubscription]);
+
+  // 4) Cancelar suscripción
+  const handleCancelSubscription = async () => {
+    if (!user?.paypalSubscriptionId) return;
+    const confirmed = window.confirm("¿Seguro deseas cancelar tu suscripción? Esto te devolverá al plan FREE.");
+    if (!confirmed) return;
+
+    setCanceling(true);
+    try {
+      const res = await fetch("https://tiktokfinder.onrender.com/paypal/cancel-subscription", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subscriptionId: user.paypalSubscriptionId, userId: user.id }),
+      });
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        alert("Solicitud de cancelación enviada. Tu rol será actualizado automáticamente vía webhook.");
+      } else {
+        console.error("Cancel subscription error:", data);
+        alert("No se pudo cancelar la suscripción. Revisa la consola.");
+      }
+    } catch (err) {
+      console.error("Error canceling subscription:", err);
+      alert("Error cancelando suscripción. Revisa la consola.");
+    } finally {
+      setCanceling(false);
+    }
+  };
 
   if (loading) return <p>Loading...</p>;
   if (!user) return <p>You must be logged in to see this page.</p>;
@@ -139,7 +149,6 @@ const Dashboard = () => {
       <div className="p-10 text-center">
         <h1 className="text-3xl font-bold mb-4">Limited Dashboard</h1>
         <p>Upgrade to Early Access to see full benefits 🚀</p>
-
         <button
           className="mt-6 px-8 py-4 bg-primary text-white rounded-xl text-lg disabled:opacity-60"
           onClick={handleBuyEarlyAccess}
@@ -147,7 +156,6 @@ const Dashboard = () => {
         >
           {working ? "Processing..." : "Buy Early Access"}
         </button>
-
         <div className="mt-6 text-sm text-muted-foreground">
           <p>Si ya pagaste y te redirigieron de vuelta, espera unos segundos mientras verificamos tu suscripción.</p>
         </div>
@@ -155,11 +163,19 @@ const Dashboard = () => {
     );
   }
 
+  // Usuarios PAID
   return (
     <div className="p-10">
       <h1 className="text-3xl font-bold mb-4">Welcome {user.name}, full dashboard unlocked!</h1>
-      {/* contenido premium */}
       <p>Acceso completo activado. 🎉</p>
+
+      <button
+        className="mt-6 px-6 py-3 bg-red-600 text-white rounded-xl disabled:opacity-60"
+        onClick={handleCancelSubscription}
+        disabled={canceling}
+      >
+        {canceling ? "Cancelando..." : "Cancelar suscripción"}
+      </button>
     </div>
   );
 };
