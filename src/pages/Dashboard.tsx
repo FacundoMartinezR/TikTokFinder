@@ -12,42 +12,35 @@ type User = {
 const Dashboard = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [working, setWorking] = useState(false); // boton deshabilitado mientras crea subscripción/checkea
+  const [working, setWorking] = useState(false);
   const [checkingSubscription, setCheckingSubscription] = useState(false);
   const [canceling, setCanceling] = useState(false);
 
   // 1) Traer usuario al cargar
-  useEffect(() => {
-    const fetchUser = async () => {
-      setLoading(true);
-      try {
-        const res = await fetch("https://tiktokfinder.onrender.com/auth/me", {
-          credentials: "include",
-        });
-        const data = await res.json();
-        console.log("fetch /auth/me ->", data);
-        if (data.ok && data.user) {
-          setUser(data.user);
-        } else {
-          setUser(null);
-        }
-      } catch (err) {
-        console.error("Error fetching user:", err);
-        setUser(null);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchUser = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("https://tiktokfinder.onrender.com/auth/me", {
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (data.ok && data.user) setUser(data.user);
+      else setUser(null);
+    } catch (err) {
+      console.error("Error fetching user:", err);
+      setUser(null);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchUser();
   }, []);
 
-  // 2) Crear suscripción y redirigir a PayPal
+  // 2) Crear suscripción
   const handleBuyEarlyAccess = async () => {
-    if (!user?.id) {
-      alert("No estás autenticado correctamente. Vuelve a iniciar sesión.");
-      return;
-    }
+    if (!user?.id) return alert("No estás autenticado correctamente.");
 
     setWorking(true);
     try {
@@ -57,15 +50,10 @@ const Dashboard = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId: user.id }),
       });
-
       const data = await res.json();
-      console.log("create-subscription response:", data);
 
-      if (res.ok && data.approveLink) {
-        window.location.href = data.approveLink;
-      } else {
-        alert("Error iniciando pago. Revisa la consola del servidor para más detalles.");
-      }
+      if (res.ok && data.approveLink) window.location.href = data.approveLink;
+      else alert("Error iniciando pago. Revisa la consola del servidor.");
     } catch (err) {
       console.error("Error al crear suscripción:", err);
       alert("Error al crear suscripción. Revisa la consola del servidor.");
@@ -90,16 +78,10 @@ const Dashboard = () => {
           body: JSON.stringify({ userId: user.id, subscriptionId }),
         });
         const data = await res.json();
-        console.log("check-subscription response:", data);
 
-        if (res.ok && data.success) {
-          // solo UX: mostrar mensaje
-          alert("¡Suscripción activada! Ahora tienes acceso completo.");
-          window.history.replaceState({}, "", "/dashboard");
-          // no actualizamos role localmente, el webhook será la fuente de verdad
-        } else {
-          alert("Tu suscripción aún está pendiente o falló. Revisa tu cuenta de PayPal.");
-        }
+        if (res.ok && data.success) alert("¡Suscripción activada! Ahora tienes acceso completo.");
+        else alert("Tu suscripción aún está pendiente o falló. Revisa tu cuenta de PayPal.");
+        window.history.replaceState({}, "", "/dashboard");
       } catch (err) {
         console.error("Error checando suscripción:", err);
         alert("Error verificando suscripción. Revisa la consola del servidor.");
@@ -126,8 +108,11 @@ const Dashboard = () => {
         body: JSON.stringify({ subscriptionId: user.paypalSubscriptionId, userId: user.id }),
       });
       const data = await res.json();
+
       if (res.ok && data.ok) {
         alert("Solicitud de cancelación enviada. Tu rol será actualizado automáticamente vía webhook.");
+        // Refrescar usuario para actualizar rol
+        await fetchUser();
       } else {
         console.error("Cancel subscription error:", data);
         alert("No se pudo cancelar la suscripción. Revisa la consola.");
@@ -169,13 +154,15 @@ const Dashboard = () => {
       <h1 className="text-3xl font-bold mb-4">Welcome {user.name}, full dashboard unlocked!</h1>
       <p>Acceso completo activado. 🎉</p>
 
-      <button
-        className="mt-6 px-6 py-3 bg-red-600 text-white rounded-xl disabled:opacity-60"
-        onClick={handleCancelSubscription}
-        disabled={canceling}
-      >
-        {canceling ? "Cancelando..." : "Cancelar suscripción"}
-      </button>
+      {user.role === "PAID" && (
+        <button
+          className="mt-6 px-6 py-3 bg-red-600 text-white rounded-xl disabled:opacity-60"
+          onClick={handleCancelSubscription}
+          disabled={canceling}
+        >
+          {canceling ? "Cancelando..." : "Cancelar suscripción"}
+        </button>
+      )}
     </div>
   );
 };
