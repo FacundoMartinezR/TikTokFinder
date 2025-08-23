@@ -19,14 +19,13 @@ type Tiktoker = {
   followers: number;
   engagementRate: number;
   bio?: string;
-  language?: string;
-  totalLikes?: number;
   avgViews?: number;
   avgLikes?: number;
   avgComments?: number;
   verified?: boolean;
   contact?: string;
   priceEst?: number;
+  profileUrl?: string;
 };
 
 const API_BASE = "https://tiktokfinder.onrender.com"; // ajusta si corresponde
@@ -68,9 +67,7 @@ const Dashboard = () => {
     }
   };
 
-  useEffect(() => {
-    fetchUser();
-  }, []);
+  useEffect(() => { fetchUser(); }, []);
 
   // ============================
   // SUBSCRIPTION
@@ -87,16 +84,9 @@ const Dashboard = () => {
       });
       const data = await res.json();
       if (res.ok && data.approveLink) window.location.href = data.approveLink;
-      else {
-        console.error("create-subscription error:", data);
-        alert("Error iniciando pago. Revisa la consola del servidor.");
-      }
-    } catch (err) {
-      console.error("Error al crear suscripción:", err);
-      alert("Error al crear suscripción. Revisa la consola del servidor.");
-    } finally {
-      setWorking(false);
-    }
+      else { console.error("create-subscription error:", data); alert("Error iniciando pago."); }
+    } catch (err) { console.error(err); alert("Error al crear suscripción."); }
+    finally { setWorking(false); }
   };
 
   useEffect(() => {
@@ -115,22 +105,17 @@ const Dashboard = () => {
         });
         const data = await res.json();
         if (res.ok && data.success) alert("¡Suscripción activada! Ahora tienes acceso completo.");
-        else alert("Tu suscripción aún está pendiente o falló. Revisa tu cuenta de PayPal.");
+        else alert("Suscripción pendiente o fallida. Revisa PayPal.");
         window.history.replaceState({}, "", "/dashboard");
-      } catch (err) {
-        console.error("Error checando suscripción:", err);
-        alert("Error verificando suscripción. Revisa la consola del servidor.");
-      } finally {
-        setCheckingSubscription(false);
-      }
+      } catch (err) { console.error(err); alert("Error verificando suscripción."); }
+      finally { setCheckingSubscription(false); }
     };
     doCheck();
   }, [user, checkingSubscription]);
 
   const handleCancelSubscription = async () => {
     if (!user?.paypalSubscriptionId) return;
-    const confirmed = window.confirm("¿Seguro deseas cancelar tu suscripción? Esto te devolverá al plan FREE.");
-    if (!confirmed) return;
+    if (!window.confirm("¿Seguro deseas cancelar tu suscripción?")) return;
 
     setCanceling(true);
     setUser(prev => (prev ? { ...prev, role: "FREE" } : prev));
@@ -143,18 +128,10 @@ const Dashboard = () => {
         body: JSON.stringify({ subscriptionId: user.paypalSubscriptionId, userId: user.id })
       });
       const data = await res.json();
-      if (res.ok && data.ok) alert("Solicitud de cancelación enviada. Tu rol fue actualizado a FREE inmediatamente.");
-      else {
-        console.error("Cancel subscription error:", data);
-        alert("No se pudo cancelar. Refrescando datos...");
-        await fetchUser();
-      }
-    } catch (err) {
-      console.error("Error canceling subscription:", err);
-      await fetchUser();
-    } finally {
-      setCanceling(false);
-    }
+      if (res.ok && data.ok) alert("Suscripción cancelada, rol actualizado a FREE.");
+      else { console.error("Cancel subscription error:", data); await fetchUser(); }
+    } catch (err) { console.error(err); await fetchUser(); }
+    finally { setCanceling(false); }
   };
 
   // ============================
@@ -176,18 +153,16 @@ const Dashboard = () => {
       const res = await fetch(`${API_BASE}/api/tiktokers?${params}`, { credentials: "include" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      setTiktokers(data.ok ? data.results : []);
-    } catch (err) {
-      console.error("Error fetching tiktokers:", err);
-      setTiktokers([]);
-    } finally {
-      setLoadingTiktokers(false);
-    }
+      setTiktokers(data.ok ? data.results.map((d: any) => ({
+        ...d,
+        handle: d.handle || d.username || d.id,
+        niches: d.niches && d.niches.length ? d.niches : (d.niche ? [d.niche] : (d.categories ?? []))
+      })) : []);
+    } catch (err) { console.error(err); setTiktokers([]); }
+    finally { setLoadingTiktokers(false); }
   };
 
-  useEffect(() => {
-    if (user?.role === "PAID") fetchTiktokers();
-  }, [user, filters, page]);
+  useEffect(() => { if (user?.role === "PAID") fetchTiktokers(); }, [user, filters, page]);
 
   // ============================
   // UI
@@ -213,6 +188,7 @@ const Dashboard = () => {
 
   return (
     <div className="p-6">
+      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
         <h1 className="text-2xl font-bold">Welcome {user.name}, full dashboard unlocked 🎉</h1>
         <div className="flex gap-3">
@@ -252,59 +228,73 @@ const Dashboard = () => {
       {/* Results */}
       {loadingTiktokers ? <p>Cargando tiktokers...</p> :
         (tiktokers.length === 0 ? <p>No se encontraron tiktokers con esos filtros.</p> :
-          <>
-            <div className="overflow-x-auto">
-              <table className="hidden md:table w-full border-collapse">
-                <thead>
-                  <tr className="bg-gray-100 text-left">
-                    <th className="p-3">Avatar</th>
-                    <th className="p-3">Handle</th>
-                    <th className="p-3">Country</th>
-                    <th className="p-3">Niches</th>
-                    <th className="p-3">Followers</th>
-                    <th className="p-3">Engagement</th>
-                    <th className="p-3">Bio</th>
-                    <th className="p-3">Avg Likes</th>
-                    <th className="p-3">Total Likes</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {tiktokers.map((tk) => (
-                    <tr key={tk.id} className="border-b hover:bg-gray-50">
-                      <td className="p-3"><img src={tk.avatarUrl || ""} alt="" className="w-10 h-10 rounded-full" /></td>
-                      <td className="p-3">@{tk.handle}</td>
-                      <td className="p-3">{tk.country}</td>
-                      <td className="p-3">{tk.niches.join(", ")}</td>
-                      <td className="p-3">{tk.followers.toLocaleString()}</td>
-                      <td className="p-3">{(tk.engagementRate * 100).toFixed(1)}%</td>
-                      <td className="p-3">{tk.bio || "-"}</td>
-                      <td className="p-3">{tk.avgLikes?.toLocaleString() || "-"}</td>
-                      <td className="p-3">{tk.totalLikes?.toLocaleString() || "-"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-
-              {/* Mobile */}
-              <div className="grid grid-cols-1 gap-4 md:hidden">
+          <div className="overflow-x-auto">
+            <table className="hidden md:table w-full border-collapse">
+              <thead>
+                <tr className="bg-gray-100 text-left">
+                  <th className="p-3">Avatar</th>
+                  <th className="p-3">Handle</th>
+                  <th className="p-3">Country</th>
+                  <th className="p-3">Niches</th>
+                  <th className="p-3">Followers</th>
+                  <th className="p-3">Engagement</th>
+                  <th className="p-3">Bio</th>
+                  <th className="p-3">Avg Views</th>
+                  <th className="p-3">Profile</th>
+                </tr>
+              </thead>
+              <tbody>
                 {tiktokers.map((tk) => (
-                  <div key={tk.id} className="p-4 border rounded-lg shadow flex flex-col gap-2">
-                    <div className="flex items-center gap-4">
-                      <img src={tk.avatarUrl || ""} alt="" className="w-12 h-12 rounded-full" />
-                      <div>
-                        <p className="font-bold">@{tk.handle}</p>
-                        <p className="text-sm text-gray-500">{tk.country}</p>
-                      </div>
-                    </div>
-                    <p className="text-sm"><strong>Niches:</strong> {tk.niches.join(", ")}</p>
-                    <p className="text-sm"><strong>Followers:</strong> {tk.followers.toLocaleString()}</p>
-                    <p className="text-sm"><strong>Engagement:</strong> {(tk.engagementRate * 100).toFixed(1)}%</p>
-                    <p className="text-sm"><strong>Bio:</strong> {tk.bio || "-"}</p>
-                    <p className="text-sm"><strong>Avg Likes:</strong> {tk.avgLikes?.toLocaleString() || "-"}</p>
-                    <p className="text-sm"><strong>Total Likes:</strong> {tk.totalLikes?.toLocaleString() || "-"}</p>
-                  </div>
+                  <tr key={tk.id} className="border-b hover:bg-gray-50">
+                    <td className="p-3"><img src={tk.avatarUrl || ""} alt="" className="w-10 h-10 rounded-full" /></td>
+                    <td className="p-3">{tk.handle}</td>
+                    <td className="p-3">{tk.country}</td>
+                    <td className="p-3">{tk.niches.join(", ")}</td>
+                    <td className="p-3">{tk.followers.toLocaleString()}</td>
+                    <td className="p-3">{(tk.engagementRate * 100).toFixed(1)}%</td>
+                    <td className="p-3">{tk.bio || "-"}</td>
+                    <td className="p-3">{tk.avgViews?.toLocaleString() || "-"}</td>
+                    <td className="p-3">
+                      {tk.profileUrl && (
+                        <button
+                          className="px-2 py-1 bg-blue-600 text-white rounded"
+                          onClick={() => window.open(tk.profileUrl, "_blank")}
+                        >
+                          Go
+                        </button>
+                      )}
+                    </td>
+                  </tr>
                 ))}
-              </div>
+              </tbody>
+            </table>
+
+            {/* Mobile */}
+            <div className="grid grid-cols-1 gap-4 md:hidden">
+              {tiktokers.map((tk) => (
+                <div key={tk.id} className="p-4 border rounded-lg shadow flex flex-col gap-2">
+                  <div className="flex items-center gap-4">
+                    <img src={tk.avatarUrl || ""} alt="" className="w-12 h-12 rounded-full" />
+                    <div>
+                      <p className="font-bold">{tk.handle}</p>
+                      <p className="text-sm text-gray-500">{tk.country}</p>
+                    </div>
+                  </div>
+                  <p className="text-sm"><strong>Niches:</strong> {tk.niches.join(", ")}</p>
+                  <p className="text-sm"><strong>Followers:</strong> {tk.followers.toLocaleString()}</p>
+                  <p className="text-sm"><strong>Engagement:</strong> {(tk.engagementRate * 100).toFixed(1)}%</p>
+                  <p className="text-sm"><strong>Bio:</strong> {tk.bio || "-"}</p>
+                  <p className="text-sm"><strong>Avg Views:</strong> {tk.avgViews?.toLocaleString() || "-"}</p>
+                  {tk.profileUrl && (
+                    <button
+                      className="px-2 py-1 bg-blue-600 text-white rounded w-full"
+                      onClick={() => window.open(tk.profileUrl, "_blank")}
+                    >
+                      Go to profile
+                    </button>
+                  )}
+                </div>
+              ))}
             </div>
 
             {/* Pagination */}
@@ -313,7 +303,7 @@ const Dashboard = () => {
               <span>Page {page}</span>
               <button className="px-3 py-1 border rounded" onClick={() => setPage(p => p+1)}>Next</button>
             </div>
-          </>
+          </div>
         )
       }
     </div>
