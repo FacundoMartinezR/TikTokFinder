@@ -6,7 +6,7 @@ type User = {
   name?: string;
   email?: string;
   role?: string;
-  paypalSubscriptionId?: string;
+  paypalSubscriptionId?: string | null;
 };
 
 type Tiktoker = {
@@ -14,12 +14,12 @@ type Tiktoker = {
   handle: string;
   name?: string;
   avatarUrl?: string;
+  profileUrl?: string | null;
   country?: string;
   niches: string[];
   followers: number;
   engagementRate: number;
-  avgViews?: number;
-  profileUrl?: string | null;
+  avgViews?: number | null;
 };
 
 const API_BASE = "https://tiktokfinder.onrender.com"; // ajusta si corresponde
@@ -43,6 +43,10 @@ const Dashboard = () => {
   const [loadingTiktokers, setLoadingTiktokers] = useState(false);
   const [page, setPage] = useState(1);
   const perPage = 25;
+
+  // total / paginación
+  const [total, setTotal] = useState(0);
+  const totalPages = Math.max(1, Math.ceil(total / perPage));
 
   // ============================
   // USER
@@ -130,7 +134,7 @@ const Dashboard = () => {
 
     setCanceling(true);
     // actualizar UI inmediatamente a FREE (solicitud al backend sigue)
-    setUser(prev => (prev ? { ...prev, role: "FREE" } : prev));
+    setUser(prev => (prev ? { ...prev, role: "FREE", paypalSubscriptionId: null } : prev));
 
     try {
       const res = await fetch(`${API_BASE}/paypal/cancel-subscription`, {
@@ -142,6 +146,8 @@ const Dashboard = () => {
       const data = await res.json();
       if (res.ok && data.ok) {
         alert("Solicitud de cancelación enviada. Tu rol fue actualizado a FREE inmediatamente.");
+        // refrescar user para consistencia eventual
+        await fetchUser();
       } else {
         console.error("Cancel subscription error:", data);
         alert("No se pudo cancelar. Refrescando datos...");
@@ -158,7 +164,7 @@ const Dashboard = () => {
   // ============================
   // TIKTOKERS FETCH
   // ============================
-  const fetchTiktokers = async () => {
+  const fetchTiktokers = async (requestedPage = page) => {
     setLoadingTiktokers(true);
     try {
       const params = new URLSearchParams({
@@ -167,7 +173,7 @@ const Dashboard = () => {
         minFollowers: filters.minFollowers || "",
         maxFollowers: filters.maxFollowers || "",
         sortBy: filters.sortBy || "followers",
-        page: String(page),
+        page: String(requestedPage),
         perPage: String(perPage)
       }).toString();
 
@@ -177,22 +183,53 @@ const Dashboard = () => {
         throw new Error(`HTTP ${res.status} - ${txt}`);
       }
       const data = await res.json();
+
+      const serverTotal = Number(data.total ?? 0);
+      setTotal(serverTotal);
+
+      // Ajustar si la página solicitada es > totalPages
+      const pages = Math.max(1, Math.ceil(serverTotal / perPage));
+      if (serverTotal > 0 && requestedPage > pages) {
+        setPage(pages);
+        return;
+      }
+
       if (data.ok) {
-        setTiktokers(data.results || []);
+        // Mapear defensivo por si faltan campos
+        const mapped = (data.results || []).map((d: any) => ({
+          id: d.id,
+          handle: d.handle || (d.username ?? ""),
+          name: d.name ?? "",
+          avatarUrl: d.avatarUrl ?? "",
+          profileUrl: d.profileUrl ?? null,
+          country: d.country ?? "",
+          niches: Array.isArray(d.niches) ? d.niches : [],
+          followers: Number(d.followers || 0),
+          engagementRate: Number(d.engagementRate || 0),
+          avgViews: d.avgViews ? Number(d.avgViews) : null
+        }));
+        setTiktokers(mapped);
       } else {
-        console.warn("API returned ok:false", data);
         setTiktokers([]);
       }
     } catch (err) {
       console.error("Error fetching tiktokers:", err);
       setTiktokers([]);
+      setTotal(0);
     } finally {
       setLoadingTiktokers(false);
     }
   };
 
+  // recupera tiktokers si es PAID
   useEffect(() => {
-    if (user?.role === "PAID") fetchTiktokers();
+    if (user?.role === "PAID") {
+      fetchTiktokers(page);
+    } else {
+      setTiktokers([]);
+      setTotal(0);
+      setPage(1);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, filters, page]);
 
@@ -225,7 +262,10 @@ const Dashboard = () => {
         <div className="flex gap-3">
           <button
             className="px-4 py-2 bg-gray-200 rounded"
-            onClick={() => { setPage(1); setFilters({ ...filters, country: "", niche: "", minFollowers: "", maxFollowers: "" }); }}
+            onClick={() => {
+              setPage(1);
+              setFilters({ country: "", niche: "", minFollowers: "", maxFollowers: "", sortBy: "followers" });
+            }}
           >
             Reset filters
           </button>
@@ -241,25 +281,56 @@ const Dashboard = () => {
 
       {/* Filters */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-        <input type="text" placeholder="País" className="border rounded-lg px-3 py-2"
-          value={filters.country} onChange={(e) => setFilters({ ...filters, country: e.target.value })} />
-        <input type="text" placeholder="Nicho" className="border rounded-lg px-3 py-2"
-          value={filters.niche} onChange={(e) => setFilters({ ...filters, niche: e.target.value })} />
-        <input type="number" placeholder="Min followers" className="border rounded-lg px-3 py-2"
-          value={filters.minFollowers} onChange={(e) => setFilters({ ...filters, minFollowers: e.target.value })} />
-        <input type="number" placeholder="Max followers" className="border rounded-lg px-3 py-2"
-          value={filters.maxFollowers} onChange={(e) => setFilters({ ...filters, maxFollowers: e.target.value })} />
-        <select className="border rounded-lg px-3 py-2" value={filters.sortBy}
-          onChange={(e) => setFilters({ ...filters, sortBy: e.target.value })}>
+        <input
+          type="text"
+          placeholder="País"
+          className="border rounded-lg px-3 py-2"
+          value={filters.country}
+          onChange={(e) => { setPage(1); setFilters({ ...filters, country: e.target.value }); }}
+        />
+        <input
+          type="text"
+          placeholder="Nicho"
+          className="border rounded-lg px-3 py-2"
+          value={filters.niche}
+          onChange={(e) => { setPage(1); setFilters({ ...filters, niche: e.target.value }); }}
+        />
+        <input
+          type="number"
+          placeholder="Min followers"
+          className="border rounded-lg px-3 py-2"
+          value={filters.minFollowers}
+          onChange={(e) => { setPage(1); setFilters({ ...filters, minFollowers: e.target.value }); }}
+        />
+        <input
+          type="number"
+          placeholder="Max followers"
+          className="border rounded-lg px-3 py-2"
+          value={filters.maxFollowers}
+          onChange={(e) => { setPage(1); setFilters({ ...filters, maxFollowers: e.target.value }); }}
+        />
+        <select
+          className="border rounded-lg px-3 py-2"
+          value={filters.sortBy}
+          onChange={(e) => { setPage(1); setFilters({ ...filters, sortBy: e.target.value }); }}
+        >
           <option value="followers">Ordenar por Followers</option>
           <option value="engagement">Ordenar por Engagement</option>
         </select>
       </div>
 
       {/* Results */}
-      {loadingTiktokers ? <p>Cargando tiktokers...</p> :
-        (tiktokers.length === 0 ? <p>No se encontraron tiktokers con esos filtros.</p> :
-          <>
+      {loadingTiktokers ? (
+        <p>Cargando tiktokers...</p>
+      ) : (
+        <>
+          <div className="mb-3 text-sm text-gray-600">
+            Mostrando {tiktokers.length} de {total} resultados — página {page} / {totalPages}
+          </div>
+
+          {tiktokers.length === 0 ? (
+            <p>No se encontraron tiktokers con esos filtros.</p>
+          ) : (
             <div className="overflow-x-auto">
               <table className="hidden md:table w-full border-collapse">
                 <thead>
@@ -286,10 +357,7 @@ const Dashboard = () => {
                       <td className="p-3">{(Number(tk.engagementRate || 0) * 100).toFixed(1)}%</td>
                       <td className="p-3">
                         {tk.profileUrl ? (
-                          <button
-                            className="px-3 py-1 border rounded text-sm"
-                            onClick={() => window.open(tk.profileUrl ?? "", "_blank", "noopener")}
-                          >
+                          <button className="px-3 py-1 border rounded text-sm" onClick={() => window.open(tk.profileUrl ?? "", "_blank", "noopener")}>
                             Abrir perfil
                           </button>
                         ) : "—"}
@@ -313,10 +381,7 @@ const Dashboard = () => {
                     </div>
                     <div>
                       {tk.profileUrl ? (
-                        <button
-                          className="px-3 py-1 border rounded text-sm"
-                          onClick={() => window.open(tk.profileUrl ?? "", "_blank", "noopener")}
-                        >
+                        <button className="px-3 py-1 border rounded text-sm" onClick={() => window.open(tk.profileUrl ?? "", "_blank", "noopener")}>
                           Perfil
                         </button>
                       ) : null}
@@ -325,16 +390,30 @@ const Dashboard = () => {
                 ))}
               </div>
             </div>
+          )}
 
-            {/* simple pagination controls */}
-            <div className="mt-4 flex gap-2 items-center">
-              <button className="px-3 py-1 border rounded" onClick={() => setPage(p => Math.max(1, p-1))}>Prev</button>
-              <span>Page {page}</span>
-              <button className="px-3 py-1 border rounded" onClick={() => setPage(p => p+1)}>Next</button>
-            </div>
-          </>
-        )
-      }
+          {/* pagination controls - siempre visibles */}
+          <div className="mt-4 flex gap-2 items-center">
+            <button
+              className="px-3 py-1 border rounded disabled:opacity-50"
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page <= 1}
+            >
+              Prev
+            </button>
+
+            <span>Page {page} / {totalPages}</span>
+
+            <button
+              className="px-3 py-1 border rounded disabled:opacity-50"
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={total === 0 || page >= totalPages}
+            >
+              Next
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 };
