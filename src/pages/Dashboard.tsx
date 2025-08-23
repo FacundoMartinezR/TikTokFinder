@@ -18,6 +18,15 @@ type Tiktoker = {
   niches: string[];
   followers: number;
   engagementRate: number;
+  bio?: string;
+  language?: string;
+  totalLikes?: number;
+  avgViews?: number;
+  avgLikes?: number;
+  avgComments?: number;
+  verified?: boolean;
+  contact?: string;
+  priceEst?: number;
 };
 
 const API_BASE = "https://tiktokfinder.onrender.com"; // ajusta si corresponde
@@ -29,7 +38,6 @@ const Dashboard = () => {
   const [checkingSubscription, setCheckingSubscription] = useState(false);
   const [canceling, setCanceling] = useState(false);
 
-  // Explorador de tiktokers
   const [tiktokers, setTiktokers] = useState<Tiktoker[]>([]);
   const [filters, setFilters] = useState({
     country: "",
@@ -65,7 +73,7 @@ const Dashboard = () => {
   }, []);
 
   // ============================
-  // SUBSCRIPTION (igual que antes)
+  // SUBSCRIPTION
   // ============================
   const handleBuyEarlyAccess = async () => {
     if (!user?.id) return alert("No estás autenticado correctamente.");
@@ -91,7 +99,6 @@ const Dashboard = () => {
     }
   };
 
-  // check-subscription on return (igual que antes)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const subscriptionId = params.get("subscription_id") || params.get("subscriptionId");
@@ -118,7 +125,6 @@ const Dashboard = () => {
       }
     };
     doCheck();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, checkingSubscription]);
 
   const handleCancelSubscription = async () => {
@@ -127,7 +133,6 @@ const Dashboard = () => {
     if (!confirmed) return;
 
     setCanceling(true);
-    // actualizar UI inmediatamente a FREE (solicitud al backend sigue)
     setUser(prev => (prev ? { ...prev, role: "FREE" } : prev));
 
     try {
@@ -138,9 +143,8 @@ const Dashboard = () => {
         body: JSON.stringify({ subscriptionId: user.paypalSubscriptionId, userId: user.id })
       });
       const data = await res.json();
-      if (res.ok && data.ok) {
-        alert("Solicitud de cancelación enviada. Tu rol fue actualizado a FREE inmediatamente.");
-      } else {
+      if (res.ok && data.ok) alert("Solicitud de cancelación enviada. Tu rol fue actualizado a FREE inmediatamente.");
+      else {
         console.error("Cancel subscription error:", data);
         alert("No se pudo cancelar. Refrescando datos...");
         await fetchUser();
@@ -170,17 +174,9 @@ const Dashboard = () => {
       }).toString();
 
       const res = await fetch(`${API_BASE}/api/tiktokers?${params}`, { credentials: "include" });
-      if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(`HTTP ${res.status} - ${txt}`);
-      }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      if (data.ok) {
-        setTiktokers(data.results || []);
-      } else {
-        console.warn("API returned ok:false", data);
-        setTiktokers([]);
-      }
+      setTiktokers(data.ok ? data.results : []);
     } catch (err) {
       console.error("Error fetching tiktokers:", err);
       setTiktokers([]);
@@ -191,7 +187,6 @@ const Dashboard = () => {
 
   useEffect(() => {
     if (user?.role === "PAID") fetchTiktokers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, filters, page]);
 
   // ============================
@@ -268,6 +263,9 @@ const Dashboard = () => {
                     <th className="p-3">Niches</th>
                     <th className="p-3">Followers</th>
                     <th className="p-3">Engagement</th>
+                    <th className="p-3">Bio</th>
+                    <th className="p-3">Avg Likes</th>
+                    <th className="p-3">Total Likes</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -279,6 +277,9 @@ const Dashboard = () => {
                       <td className="p-3">{tk.niches.join(", ")}</td>
                       <td className="p-3">{tk.followers.toLocaleString()}</td>
                       <td className="p-3">{(tk.engagementRate * 100).toFixed(1)}%</td>
+                      <td className="p-3">{tk.bio || "-"}</td>
+                      <td className="p-3">{tk.avgLikes?.toLocaleString() || "-"}</td>
+                      <td className="p-3">{tk.totalLikes?.toLocaleString() || "-"}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -287,20 +288,26 @@ const Dashboard = () => {
               {/* Mobile */}
               <div className="grid grid-cols-1 gap-4 md:hidden">
                 {tiktokers.map((tk) => (
-                  <div key={tk.id} className="p-4 border rounded-lg shadow flex items-center gap-4">
-                    <img src={tk.avatarUrl || ""} alt="" className="w-12 h-12 rounded-full" />
-                    <div>
-                      <p className="font-bold">@{tk.handle}</p>
-                      <p className="text-sm text-gray-500">{tk.country}</p>
-                      <p className="text-sm">Followers: {tk.followers.toLocaleString()}</p>
-                      <p className="text-sm">Engagement: {(tk.engagementRate * 100).toFixed(1)}%</p>
+                  <div key={tk.id} className="p-4 border rounded-lg shadow flex flex-col gap-2">
+                    <div className="flex items-center gap-4">
+                      <img src={tk.avatarUrl || ""} alt="" className="w-12 h-12 rounded-full" />
+                      <div>
+                        <p className="font-bold">@{tk.handle}</p>
+                        <p className="text-sm text-gray-500">{tk.country}</p>
+                      </div>
                     </div>
+                    <p className="text-sm"><strong>Niches:</strong> {tk.niches.join(", ")}</p>
+                    <p className="text-sm"><strong>Followers:</strong> {tk.followers.toLocaleString()}</p>
+                    <p className="text-sm"><strong>Engagement:</strong> {(tk.engagementRate * 100).toFixed(1)}%</p>
+                    <p className="text-sm"><strong>Bio:</strong> {tk.bio || "-"}</p>
+                    <p className="text-sm"><strong>Avg Likes:</strong> {tk.avgLikes?.toLocaleString() || "-"}</p>
+                    <p className="text-sm"><strong>Total Likes:</strong> {tk.totalLikes?.toLocaleString() || "-"}</p>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* simple pagination controls */}
+            {/* Pagination */}
             <div className="mt-4 flex gap-2 items-center">
               <button className="px-3 py-1 border rounded" onClick={() => setPage(p => Math.max(1, p-1))}>Prev</button>
               <span>Page {page}</span>
