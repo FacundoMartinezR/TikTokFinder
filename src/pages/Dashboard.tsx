@@ -5,7 +5,7 @@ import { useEffect, useState } from "react"
 import {
   Search,
   Filter,
-  Users,
+  UsersIcon,
   TrendingUp,
   Globe,
   Eye,
@@ -15,9 +15,12 @@ import {
   ChevronRight,
   RotateCcw,
   X,
+  ChevronDown,
+  LogOut,
+  User,
 } from "lucide-react"
 
-type User = {
+type UserType = {
   id: string
   name?: string
   email?: string
@@ -41,11 +44,12 @@ type Tiktoker = {
 const API_BASE = "https://tiktokfinder.onrender.com" // ajusta si corresponde
 
 const Dashboard = () => {
-  const [user, setUser] = useState<User | null>(null)
+  const [user, setUser] = useState<UserType | null>(null)
   const [loading, setLoading] = useState(true)
   const [working, setWorking] = useState(false)
   const [checkingSubscription, setCheckingSubscription] = useState(false)
   const [canceling, setCanceling] = useState(false)
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false)
 
   // Explorador de tiktokers
   const [tiktokers, setTiktokers] = useState<Tiktoker[]>([])
@@ -177,6 +181,19 @@ const Dashboard = () => {
     }
   }
 
+  const handleLogout = async () => {
+    try {
+      await fetch(`${API_BASE}/auth/logout`, {
+        method: "POST",
+        credentials: "include",
+      })
+      setUser(null)
+      window.location.href = "/login" // or wherever your login page is
+    } catch (err) {
+      console.error("Error logging out:", err)
+    }
+  }
+
   // ============================
   // TIKTOKERS FETCH
   // ============================
@@ -269,7 +286,7 @@ const Dashboard = () => {
         <div className="bg-white rounded-xl shadow-lg p-8 max-w-md w-full mx-4">
           <div className="text-center">
             <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Users className="w-8 h-8 text-orange-600" />
+              <UsersIcon className="w-8 h-8 text-orange-600" />
             </div>
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Acceso Requerido</h2>
             <p className="text-gray-600">Debes iniciar sesión para acceder al dashboard.</p>
@@ -308,7 +325,7 @@ const Dashboard = () => {
                 </div>
                 <div className="text-center">
                   <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center mx-auto mb-4">
-                    <Users className="w-6 h-6 text-orange-600" />
+                    <UsersIcon className="w-6 h-6 text-orange-600" />
                   </div>
                   <h3 className="font-semibold text-gray-900 mb-2">Base de Datos Completa</h3>
                   <p className="text-gray-600 text-sm">Miles de microinfluencers verificados y actualizados</p>
@@ -358,43 +375,74 @@ const Dashboard = () => {
                 Dashboard completo desbloqueado - Explora nuestra base de datos de influencers
               </p>
             </div>
-            <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative">
               <button
-                className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors duration-200 font-medium"
-                onClick={() => {
-                  setPage(1)
-                  setFilters({ country: "", niche: "", minFollowers: "", maxFollowers: "", sortBy: "followers" })
-                }}
+                className="flex items-center gap-3 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors duration-200 font-medium"
+                onClick={() => setShowProfileDropdown(!showProfileDropdown)}
               >
-                <RotateCcw className="w-4 h-4" />
-                Limpiar Filtros
+                <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center">
+                  <User className="w-4 h-4 text-white" />
+                </div>
+                <span className="hidden sm:block">{user.name}</span>
+                <ChevronDown className="w-4 h-4" />
               </button>
-              <button
-                className="flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                onClick={handleCancelSubscription}
-                disabled={canceling}
-              >
-                {canceling ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    Cancelando...
-                  </>
-                ) : (
-                  <>
-                    <X className="w-4 h-4" />
-                    Cancelar Suscripción
-                  </>
-                )}
-              </button>
+
+              {showProfileDropdown && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+                  <button
+                    className="w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors duration-200"
+                    onClick={() => {
+                      handleCancelSubscription()
+                      setShowProfileDropdown(false)
+                    }}
+                    disabled={canceling}
+                  >
+                    {canceling ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-500"></div>
+                        Cancelando...
+                      </>
+                    ) : (
+                      <>
+                        <X className="w-4 h-4 text-red-500" />
+                        Cancelar Suscripción
+                      </>
+                    )}
+                  </button>
+                  <button
+                    className="w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors duration-200"
+                    onClick={() => {
+                      handleLogout()
+                      setShowProfileDropdown(false)
+                    }}
+                  >
+                    <LogOut className="w-4 h-4 text-gray-500" />
+                    Cerrar Sesión
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
 
         {/* Filters */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
-          <div className="flex items-center gap-2 mb-4">
-            <Filter className="w-5 h-5 text-orange-500" />
-            <h2 className="text-lg font-semibold text-gray-900">Filtros de Búsqueda</h2>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Filter className="w-5 h-5 text-orange-500" />
+              <h2 className="text-lg font-semibold text-gray-900">Filtros de Búsqueda</h2>
+            </div>
+            <button
+              className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors duration-200 font-medium"
+              onClick={() => {
+                setPage(1)
+                setFilters({ country: "", niche: "", minFollowers: "", maxFollowers: "", sortBy: "followers" })
+              }}
+            >
+              <RotateCcw className="w-4 h-4" />
+              <span className="hidden sm:inline">Limpiar Filtros</span>
+              <span className="sm:hidden">Limpiar</span>
+            </button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             <div className="relative">
@@ -424,7 +472,7 @@ const Dashboard = () => {
               />
             </div>
             <div className="relative">
-              <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <UsersIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="number"
                 placeholder="Min seguidores"
@@ -437,7 +485,7 @@ const Dashboard = () => {
               />
             </div>
             <div className="relative">
-              <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <UsersIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="number"
                 placeholder="Max seguidores"
@@ -570,7 +618,7 @@ const Dashboard = () => {
                             </td>
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-1 font-semibold text-gray-900">
-                                <Users className="w-4 h-4 text-gray-400" />
+                                <UsersIcon className="w-4 h-4 text-gray-400" />
                                 {tk.followers.toLocaleString()}
                               </div>
                             </td>
@@ -638,7 +686,7 @@ const Dashboard = () => {
 
                             <div className="grid grid-cols-2 gap-4 mb-3">
                               <div className="flex items-center gap-2">
-                                <Users className="w-4 h-4 text-gray-400" />
+                                <UsersIcon className="w-4 h-4 text-gray-400" />
                                 <span className="text-sm font-semibold text-gray-900">
                                   {tk.followers.toLocaleString()}
                                 </span>
