@@ -3,7 +3,7 @@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { ArrowRight, CheckCircle, Search, Star, Target, Users, Zap, Crown, Gift } from "lucide-react"
+import { ArrowRight, CheckCircle, Search, Star, Target, Users, Zap, Crown, Gift, LogIn } from "lucide-react"
 
 const Landing = () => {
   const scrollToPricing = () => {
@@ -13,13 +13,25 @@ const Landing = () => {
   return (
     <main className="min-h-screen bg-slate-50">
       {/* Hero Section */}
+
+      <div className="absolute top-6 right-6 z-10">
+          <Button
+            variant="outline"
+            className="border-orange-200 text-orange-600 hover:bg-orange-50 hover:text-orange-700 font-semibold px-6 py-2 rounded-lg transition-all duration-300 bg-white/80 backdrop-blur-sm shadow-sm"
+            onClick={() => (window.location.href = "https://tiktokfinder.onrender.com/auth/google")}
+          >
+            <LogIn className="w-4 h-4 mr-2" />
+            Sign In
+          </Button>
+      </div>
+
       <section className="relative overflow-hidden bg-gradient-to-br from-white via-slate-50 to-slate-100">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(251,146,60,0.1),transparent_50%)]"></div>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(251,146,60,0.05),transparent_50%)]"></div>
 
-        <div className="relative container mx-auto px-6 py-16 lg:py-24">
+        <div className="relative container mx-auto px-6 max-md:py-20 py-12">
           <div className="text-center max-w-5xl mx-auto">
-            <Badge className="mb-6 px-6 py-2 text-sm font-semibold bg-orange-100 text-orange-800 border-orange-200 hover:bg-orange-200 transition-colors">
+            <Badge className="mb-2 px-6 py-2 text-sm font-semibold bg-orange-100 text-orange-800 border-orange-200 hover:bg-orange-200 transition-colors">
               🚀 Early Access Available - Limited Spots
             </Badge>
 
@@ -31,7 +43,7 @@ const Landing = () => {
               in Seconds
             </h1>
 
-            <p className="text-xl lg:text-2xl text-slate-600 mb-10 max-w-3xl mx-auto leading-relaxed">
+            <p className="text-xl lg:text-2xl text-slate-600 mb-4 max-w-3xl mx-auto leading-relaxed">
               Stop wasting hours searching. Our AI-powered platform connects you with
               <span className="text-orange-600 font-semibold"> verified micro-influencers </span>
               that perfectly match your brand and budget.
@@ -164,10 +176,6 @@ const Landing = () => {
                   <li className="flex items-center gap-3">
                     <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
                     <span className="text-slate-700">Basic search filters</span>
-                  </li>
-                  <li className="flex items-center gap-3">
-                    <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
-                    <span className="text-slate-700">5 searches per day</span>
                   </li>
                   <li className="flex items-center gap-3">
                     <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
