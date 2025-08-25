@@ -181,18 +181,19 @@ const Dashboard = () => {
     }
   }
 
-  const handleLogout = async () => {
-    try {
-      await fetch(`${API_BASE}/auth/logout`, {
-        method: "POST",
-        credentials: "include",
-      })
-      setUser(null)
-      window.location.href = "/login" // or wherever your login page is
-    } catch (err) {
-      console.error("Error logging out:", err)
-    }
+const handleLogout = async () => {
+  try {
+    await fetch(`${API_BASE}/auth/logout`, {
+      method: "POST",
+      credentials: "include", // ✅ asegura que mande la cookie al backend
+    })
+
+    setUser(null) // ✅ limpia el estado en el frontend
+    window.location.href = "/" // ✅ redirige a home o login
+  } catch (err) {
+    console.error("Error logging out:", err)
   }
+}
 
   // ============================
   // TIKTOKERS FETCH
