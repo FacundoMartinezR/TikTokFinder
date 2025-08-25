@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import Landing from "./pages/Landing";
 import Dashboard from "./pages/Dashboard";
 import PaypalSuccess from "./pages/PaypalSuccess";
-import Exchange from "./pages/auth/exchange";
+import Exchange from "./pages/Exchange";
 
 const App = () => {
   const [user, setUser] = useState(null);
