@@ -189,7 +189,7 @@ const Dashboard = () => {
         credentials: "include",
       })
       setUser(null)
-      window.location.href = "/login" // or wherever your login page is
+      window.location.href = "/" // or wherever your login page is
     } catch (err) {
       console.error("Error logging out:", err)
     }
