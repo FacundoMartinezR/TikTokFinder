@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import Landing from "./pages/Landing";
 import Dashboard from "./pages/Dashboard";
 import PaypalSuccess from "./pages/PaypalSuccess";
+import Exchange from "./pages/auth/exchange";
 
 const App = () => {
   const [user, setUser] = useState(null);
@@ -30,6 +31,7 @@ const App = () => {
           path="/dashboard"
           element={user ? <Dashboard /> : <Navigate to="/" />}
         />
+        <Route path="/auth/exchange" element={<Exchange />} />
         <Route path="/paypal-success" element={<PaypalSuccess />} />
       </Routes>
     </BrowserRouter>
