@@ -75,7 +75,7 @@ const Dashboard = () => {
   const fetchUser = async () => {
     setLoading(true)
     try {
-      const res = await fetch(`${API_BASE}/auth/me`, { credentials: "include" })
+      const res = await fetch(`${API_BASE}/auth/me`, { method: 'GET', credentials: 'include' });
       const data = await res.json()
       if (data.ok && data.user) setUser(data.user)
       else setUser(null)
