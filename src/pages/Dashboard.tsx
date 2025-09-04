@@ -2,6 +2,7 @@
 
 // src/pages/Dashboard.tsx
 import { useEffect, useState } from "react"
+import profileAvatar from "../../public/user.png"
 import {
   Search,
   Filter,
@@ -500,7 +501,7 @@ const Dashboard = () => {
                               <td className="px-6 py-4">
                                 <div className="flex items-center gap-3">
                                   <img
-                                    src={`https://tiktokfinder.onrender.com/avatars/${tk.handle}.jpeg` || "/user.png"}
+                                    src={`https://tiktokfinder.onrender.com/avatars/${tk.handle}.jpeg` ? `https://tiktokfinder.onrender.com/avatars/${tk.handle}.jpeg` : profileAvatar}
                                     alt={tk.handle}
                                     className="w-10 h-10 rounded-full object-cover border-2 border-gray-200"
                                   />
@@ -579,7 +580,7 @@ const Dashboard = () => {
                         <div key={tk.id} className="p-6">
                           <div className="flex items-start gap-4">
                             <img
-                              src={`https://tiktokfinder.onrender.com/avatars/${tk.handle}.jpeg` || "/user.png"}
+                              src={`https://tiktokfinder.onrender.com/avatars/${tk.handle}.jpeg` ? `https://tiktokfinder.onrender.com/avatars/${tk.handle}.jpeg` : profileAvatar}
                               alt={tk.handle}
                               className="w-12 h-12 rounded-full object-cover border-2 border-gray-200 flex-shrink-0"
                             />
@@ -874,7 +875,7 @@ const Dashboard = () => {
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-3">
                                 <img
-                                  src={`https://tiktokfinder.onrender.com/avatars/${tk.handle}.jpeg` || "/user.png"}
+                                  src={`https://tiktokfinder.onrender.com/avatars/${tk.handle}.jpeg` ? `https://tiktokfinder.onrender.com/avatars/${tk.handle}.jpeg` : profileAvatar}
                                   alt={tk.handle}
                                   className="w-10 h-10 rounded-full object-cover border-2 border-gray-200"
                                 />
