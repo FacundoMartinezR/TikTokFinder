@@ -611,7 +611,7 @@ const Dashboard = () => {
                                 <div className="flex items-center gap-2">
                                   <Heart className="w-4 h-4 text-red-400" />
                                   <span className="text-sm font-semibold text-gray-900">
-                                    {(Number(tk.engagementRate || 0) * 100).toFixed(1)}%
+                                    {(Number(tk.engagementRate || 0) * 100).toFixed(2)}%
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-2">
@@ -927,7 +927,7 @@ const Dashboard = () => {
                               <div className="flex items-center gap-1">
                                 <Heart className="w-4 h-4 text-red-400" />
                                 <span className="font-semibold text-gray-900">
-                                  {(Number(tk.engagementRate || 0) * 100).toFixed(1)}%
+                                  {(Number(tk.engagementRate || 0) * 100).toFixed(2)}%
                                 </span>
                               </div>
                             </td>
@@ -989,7 +989,7 @@ const Dashboard = () => {
                               <div className="flex items-center gap-2">
                                 <Heart className="w-4 h-4 text-red-400" />
                                 <span className="text-sm font-semibold text-gray-900">
-                                  {(Number(tk.engagementRate || 0) * 100).toFixed(1)}%
+                                  {(Number(tk.engagementRate || 0) * 100).toFixed(2)}%
                                 </span>
                               </div>
                               <div className="flex items-center gap-2">
