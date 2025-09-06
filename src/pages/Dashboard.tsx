@@ -31,6 +31,7 @@ type UserType = {
 }
 
 type Tiktoker = {
+  language: string
   id: string
   handle: string
   name?: string
@@ -516,7 +517,7 @@ const Dashboard = () => {
                               <td className="px-6 py-4">
                                 <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-700 text-sm rounded-md">
                                   <Globe className="w-3 h-3" />
-                                  {tk.country || "—"}
+                                  {tk.language || "—"}
                                 </span>
                               </td>
                               <td className="px-6 py-4">
@@ -623,7 +624,7 @@ const Dashboard = () => {
                                 </div>
                                 <div className="flex items-center gap-2">
                                   <Globe className="w-4 h-4 text-gray-400" />
-                                  <span className="text-sm text-gray-700">{tk.country || "—"}</span>
+                                  <span className="text-sm text-gray-700">{tk.language || "—"}</span>
                                 </div>
                               </div>
 
@@ -890,7 +891,7 @@ const Dashboard = () => {
                             <td className="px-6 py-4">
                               <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-700 text-sm rounded-md">
                                 <Globe className="w-3 h-3" />
-                                {tk.country || "—"}
+                                {tk.language || "—"}
                               </span>
                             </td>
                             <td className="px-6 py-4">
@@ -1001,7 +1002,7 @@ const Dashboard = () => {
                               </div>
                               <div className="flex items-center gap-2">
                                 <Globe className="w-4 h-4 text-gray-400" />
-                                <span className="text-sm text-gray-700">{tk.country || "—"}</span>
+                                <span className="text-sm text-gray-700">{tk.language || "—"}</span>
                               </div>
                             </div>
 
