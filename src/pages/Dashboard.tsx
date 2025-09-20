@@ -44,6 +44,33 @@ type Tiktoker = {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "https://tiktokfinder.onrender.com" // adjust if needed
 
+// ---------- Helpers ----------
+const normalizeNiche = (raw?: string | null) => {
+  if (!raw) return ""
+  const s = String(raw).trim()
+  if (!s) return ""
+  const lower = s.toLowerCase()
+  return lower.charAt(0).toUpperCase() + lower.slice(1)
+}
+const normalizeCountry = (raw?: string | null) => {
+  if (!raw) return ""
+  const s = String(raw).trim()
+  if (!s) return ""
+  // Capitalize each word in country (e.g., "united states" -> "United States")
+  return s
+    .toLowerCase()
+    .split(/\s+/)
+    .map((w) => (w.charAt(0) ? w.charAt(0).toUpperCase() + w.slice(1) : ""))
+    .join(" ")
+}
+
+// Build avatar src fallback
+const avatarSrcForHandle = (handle: string) => {
+  const safeHandle = (handle || "").replace(/^@+/, "")
+  return `${API_BASE.replace(/\/$/, "")}/avatars/${safeHandle}.jpeg`
+}
+
+// ---------- Component ----------
 const Dashboard = () => {
   const [user, setUser] = useState<UserType | null>(null)
   const [loading, setLoading] = useState(true)
@@ -56,7 +83,7 @@ const Dashboard = () => {
   const [tiktokers, setTiktokers] = useState<Tiktoker[]>([])
   const [filters, setFilters] = useState({
     country: "", // "" means All
-    niche: "", // "" means All
+    niche: "", // "" means All (we will store normalized display value here)
     minFollowers: "",
     maxFollowers: "",
     sortBy: "followers",
@@ -69,7 +96,7 @@ const Dashboard = () => {
   const [total, setTotal] = useState(0)
   const totalPages = Math.max(1, Math.ceil(total / perPage))
 
-  // dropdown lists
+  // dropdown master lists (these are cumulative / master lists so they don't vanish when filtering)
   const [countriesList, setCountriesList] = useState<string[]>([])
   const [nichesList, setNichesList] = useState<string[]>([])
 
@@ -79,7 +106,7 @@ const Dashboard = () => {
   const fetchUser = async () => {
     setLoading(true)
     try {
-      const res = await fetch(`${API_BASE}/auth/me`, { method: 'GET', credentials: 'include' })
+      const res = await fetch(`${API_BASE}/auth/me`, { method: "GET", credentials: "include" })
       const data = await res.json()
       if (data.ok && data.user) setUser(data.user)
       else setUser(null)
@@ -204,9 +231,11 @@ const Dashboard = () => {
   const fetchTiktokers = async (requestedPage = page, isFreeUser = false) => {
     setLoadingTiktokers(true)
     try {
+      // Send niche in lowercase to be more tolerant server-side
+      const nicheForParam = filters.niche ? filters.niche.toLowerCase() : ""
       const params = new URLSearchParams({
         country: filters.country || "",
-        niche: filters.niche || "",
+        niche: nicheForParam,
         minFollowers: filters.minFollowers || "",
         maxFollowers: filters.maxFollowers || "",
         sortBy: filters.sortBy || "followers",
@@ -234,15 +263,17 @@ const Dashboard = () => {
       }
 
       if (data.ok) {
-        // Map defensively
+        // Map defensively and normalize niches + countries for display
         let mapped = (data.results || []).map((d: any) => ({
           id: d.id,
           handle: d.handle || (d.username ?? ""),
           name: d.name ?? "",
           avatarUrl: d.avatarUrl ?? "",
           profileUrl: d.profileUrl ?? null,
-          country: d.country ?? "" ,
-          niches: Array.isArray(d.niches) ? d.niches : (d.niche ? [d.niche] : []),
+          country: normalizeCountry(d.country ?? ""),
+          niches: Array.isArray(d.niches)
+            ? d.niches.map((n: string) => normalizeNiche(n)).filter(Boolean)
+            : (d.niche ? [normalizeNiche(d.niche)] : []),
           followers: Number(d.followers || 0),
           engagementRate: Number(d.engagementRate || 0),
           avgViews: d.avgViews ? Number(d.avgViews) : null,
@@ -254,28 +285,39 @@ const Dashboard = () => {
 
         setTiktokers(mapped)
 
-        // extract unique lists for dropdowns from mapped results
-        const countriesSet = new Set<string>()
-        const nichesSet = new Set<string>()
-        mapped.forEach((m: { country: string; niches: string[] }) => {
-          if (m.country) countriesSet.add(m.country)
-          if (Array.isArray(m.niches)) m.niches.forEach((n: string) => n && nichesSet.add(n))
+        // ---- Merge into master lists (so they don't disappear when a filter is active) ----
+        // Countries: merge normalized country names
+        const existingCountriesMap = new Map<string, string>()
+        countriesList.forEach((c) => existingCountriesMap.set(c.toLowerCase(), c))
+        mapped.forEach((m: { country: string }) => {
+          if (m.country) existingCountriesMap.set(m.country.toLowerCase(), m.country)
         })
-        const countriesArr = Array.from(countriesSet).sort((a, b) => a.localeCompare(b))
-        const nichesArr = Array.from(nichesSet).sort((a, b) => a.localeCompare(b))
-        setCountriesList(countriesArr)
-        setNichesList(nichesArr)
+        const newCountriesArr = Array.from(existingCountriesMap.values()).sort((a, b) => a.localeCompare(b))
+        setCountriesList(newCountriesArr)
+
+        // Niches: dedupe case-insensitive and normalize display (Capitalize first letter)
+        const existingNichesMap = new Map<string, string>()
+        nichesList.forEach((n) => existingNichesMap.set(n.toLowerCase(), n))
+        mapped.forEach((m: { niches: any[] }) => {
+          if (Array.isArray(m.niches)) {
+            m.niches.forEach((raw) => {
+              const lower = raw.toLowerCase()
+              const normalized = normalizeNiche(raw)
+              if (normalized) existingNichesMap.set(lower, normalized)
+            })
+          }
+        })
+        const newNichesArr = Array.from(existingNichesMap.values()).sort((a, b) => a.localeCompare(b))
+        setNichesList(newNichesArr)
       } else {
         setTiktokers([])
-        setCountriesList([])
-        setNichesList([])
+        // do NOT clear master lists here (we want to preserve them)
       }
     } catch (err) {
       console.error("Error fetching tiktokers:", err)
       setTiktokers([])
       setTotal(0)
-      setCountriesList([])
-      setNichesList([])
+      // keep master lists unchanged on error
     } finally {
       setLoadingTiktokers(false)
     }
@@ -299,9 +341,7 @@ const Dashboard = () => {
   // ============================
   const avatarSrcFor = (tk: Tiktoker) => {
     if (tk.avatarUrl) return tk.avatarUrl
-    // try backend public path (handle may include dots; we assume backend stores sanitized names accordingly)
-    const safeHandle = tk.handle?.replace(/^@+/, "") || ""
-    return `${API_BASE.replace(/\/$/, "")}/avatars/${safeHandle}.jpeg`
+    return avatarSrcForHandle(tk.handle)
   }
 
   // ============================
@@ -334,9 +374,7 @@ const Dashboard = () => {
     )
   }
 
-  // ============================
-  // FREE user view
-  // ============================
+  // ----------------- FREE view (untouched display logic, but niches list fixed) -----------------
   if (user.role === "FREE") {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -445,7 +483,7 @@ const Dashboard = () => {
                 </select>
               </div>
 
-              {/* Niche dropdown */}
+              {/* Niche dropdown (master list - won't disappear when filtering) */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <select
@@ -479,7 +517,7 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {/* Results */}
+          {/* Results (unchanged display) */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             {loadingTiktokers ? (
               <div className="p-12 text-center">
@@ -535,9 +573,7 @@ const Dashboard = () => {
                                     className="w-10 h-10 rounded-full object-cover border-2 border-gray-200"
                                   />
                                   <div>
-                                    <div className="font-semibold text-gray-900">
-                                      @{(tk.handle || "").replace(/^@+/, "")}
-                                    </div>
+                                    <div className="font-semibold text-gray-900">@{(tk.handle || "").replace(/^@+/, "")}</div>
                                     {tk.name && <div className="text-sm text-gray-500">{tk.name}</div>}
                                   </div>
                                 </div>
@@ -552,12 +588,12 @@ const Dashboard = () => {
                                 <div className="flex flex-wrap gap-1">
                                   {tk.niches && tk.niches.length ? (
                                     tk.niches.slice(0, 2).map((niche, idx) => (
-                                      <span key={idx} className="inline-block px-2 py-1 bg-orange-100 text-orange-700 text-xs rounded-md uppercase">{niche}</span>
+                                      <span key={idx} className="inline-block px-2 py-1 bg-orange-100 text-orange-700 text-xs rounded-md">{niche}</span>
                                     ))
                                   ) : (
-                                    <span className="text-gray-400 text-sm uppercase">—</span>
+                                    <span className="text-gray-400 text-sm">—</span>
                                   )}
-                                  {tk.niches && tk.niches.length > 2 && (<span className="text-xs text-gray-500 uppercase">+{tk.niches.length - 2}</span>)}
+                                  {tk.niches && tk.niches.length > 2 && (<span className="text-xs text-gray-500">+{tk.niches.length - 2}</span>)}
                                 </div>
                               </td>
                               <td className="px-6 py-4">
@@ -643,7 +679,7 @@ const Dashboard = () => {
                               {tk.niches && tk.niches.length > 0 && (
                                 <div className="flex flex-wrap gap-1">
                                   {tk.niches.slice(0, 3).map((niche, idx) => (
-                                    <span key={idx} className="inline-block px-2 py-1 bg-orange-100 text-orange-700 text-xs rounded-md uppercase">{niche}</span>
+                                    <span key={idx} className="inline-block px-2 py-1 bg-orange-100 text-orange-700 text-xs rounded-md">{niche}</span>
                                   ))}
                                   {tk.niches.length > 3 && (
                                     <span className="text-xs text-gray-500 px-2 py-1">+{tk.niches.length - 3} more</span>
@@ -665,9 +701,7 @@ const Dashboard = () => {
     )
   }
 
-  // ============================
-  // PAID user view (full dashboard)
-  // ============================
+  // ----------------- PAID view (full) -----------------
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 py-8">
@@ -824,7 +858,7 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Results */}
+        {/* Results (same as earlier) */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           {loadingTiktokers ? (
             <div className="p-12 text-center">
@@ -895,12 +929,12 @@ const Dashboard = () => {
                               <div className="flex flex-wrap gap-1">
                                 {tk.niches && tk.niches.length ? (
                                   tk.niches.slice(0, 2).map((niche, idx) => (
-                                    <span key={idx} className="inline-block px-2 py-1 bg-orange-100 text-orange-700 text-xs rounded-md uppercase">{niche}</span>
+                                    <span key={idx} className="inline-block px-2 py-1 bg-orange-100 text-orange-700 text-xs rounded-md">{niche}</span>
                                   ))
                                 ) : (
-                                  <span className="text-gray-400 text-sm uppercase">—</span>
+                                  <span className="text-gray-400 text-sm">—</span>
                                 )}
-                                {tk.niches && tk.niches.length > 2 && (<span className="text-xs text-gray-500 uppercase">+{tk.niches.length - 2}</span>)}
+                                {tk.niches && tk.niches.length > 2 && (<span className="text-xs text-gray-500">+{tk.niches.length - 2}</span>)}
                               </div>
                             </td>
                             <td className="px-6 py-4">
@@ -990,7 +1024,7 @@ const Dashboard = () => {
                             {tk.niches && tk.niches.length > 0 && (
                               <div className="flex flex-wrap gap-1">
                                 {tk.niches.slice(0, 3).map((niche, idx) => (
-                                  <span key={idx} className="inline-block px-2 py-1 bg-orange-100 text-orange-700 text-xs rounded-md uppercase">{niche}</span>
+                                  <span key={idx} className="inline-block px-2 py-1 bg-orange-100 text-orange-700 text-xs rounded-md">{niche}</span>
                                 ))}
                                 {tk.niches.length > 3 && (
                                   <span className="text-xs text-gray-500 px-2 py-1">+{tk.niches.length - 3} more</span>
