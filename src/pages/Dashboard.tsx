@@ -552,12 +552,12 @@ const Dashboard = () => {
                                 <div className="flex flex-wrap gap-1">
                                   {tk.niches && tk.niches.length ? (
                                     tk.niches.slice(0, 2).map((niche, idx) => (
-                                      <span key={idx} className="inline-block px-2 py-1 bg-orange-100 text-orange-700 text-xs rounded-md">{niche}</span>
+                                      <span key={idx} className="inline-block px-2 py-1 bg-orange-100 text-orange-700 text-xs rounded-md uppercase">{niche}</span>
                                     ))
                                   ) : (
-                                    <span className="text-gray-400 text-sm">—</span>
+                                    <span className="text-gray-400 text-sm uppercase">—</span>
                                   )}
-                                  {tk.niches && tk.niches.length > 2 && (<span className="text-xs text-gray-500">+{tk.niches.length - 2}</span>)}
+                                  {tk.niches && tk.niches.length > 2 && (<span className="text-xs text-gray-500 uppercase">+{tk.niches.length - 2}</span>)}
                                 </div>
                               </td>
                               <td className="px-6 py-4">
@@ -643,7 +643,7 @@ const Dashboard = () => {
                               {tk.niches && tk.niches.length > 0 && (
                                 <div className="flex flex-wrap gap-1">
                                   {tk.niches.slice(0, 3).map((niche, idx) => (
-                                    <span key={idx} className="inline-block px-2 py-1 bg-orange-100 text-orange-700 text-xs rounded-md">{niche}</span>
+                                    <span key={idx} className="inline-block px-2 py-1 bg-orange-100 text-orange-700 text-xs rounded-md uppercase">{niche}</span>
                                   ))}
                                   {tk.niches.length > 3 && (
                                     <span className="text-xs text-gray-500 px-2 py-1">+{tk.niches.length - 3} more</span>
@@ -895,12 +895,12 @@ const Dashboard = () => {
                               <div className="flex flex-wrap gap-1">
                                 {tk.niches && tk.niches.length ? (
                                   tk.niches.slice(0, 2).map((niche, idx) => (
-                                    <span key={idx} className="inline-block px-2 py-1 bg-orange-100 text-orange-700 text-xs rounded-md">{niche}</span>
+                                    <span key={idx} className="inline-block px-2 py-1 bg-orange-100 text-orange-700 text-xs rounded-md uppercase">{niche}</span>
                                   ))
                                 ) : (
-                                  <span className="text-gray-400 text-sm">—</span>
+                                  <span className="text-gray-400 text-sm uppercase">—</span>
                                 )}
-                                {tk.niches && tk.niches.length > 2 && (<span className="text-xs text-gray-500">+{tk.niches.length - 2}</span>)}
+                                {tk.niches && tk.niches.length > 2 && (<span className="text-xs text-gray-500 uppercase">+{tk.niches.length - 2}</span>)}
                               </div>
                             </td>
                             <td className="px-6 py-4">
@@ -990,7 +990,7 @@ const Dashboard = () => {
                             {tk.niches && tk.niches.length > 0 && (
                               <div className="flex flex-wrap gap-1">
                                 {tk.niches.slice(0, 3).map((niche, idx) => (
-                                  <span key={idx} className="inline-block px-2 py-1 bg-orange-100 text-orange-700 text-xs rounded-md">{niche}</span>
+                                  <span key={idx} className="inline-block px-2 py-1 bg-orange-100 text-orange-700 text-xs rounded-md uppercase">{niche}</span>
                                 ))}
                                 {tk.niches.length > 3 && (
                                   <span className="text-xs text-gray-500 px-2 py-1">+{tk.niches.length - 3} more</span>
